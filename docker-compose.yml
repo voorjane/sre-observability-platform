@@ -1,0 +1,32 @@
+services:
+  order-api:
+    build:
+      context: ./services/order-api
+      dockerfile: Dockerfile
+    container_name: order-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    depends_on:
+      - payment-worker
+    networks:
+      - sre-net
+
+  payment-worker:
+    build:
+      context: ./services/payment-worker
+      dockerfile: Dockerfile
+    container_name: payment-worker
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    networks:
+      - sre-net
+
+networks:
+  sre-net:
+    driver: bridge
