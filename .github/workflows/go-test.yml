@@ -1,0 +1,67 @@
+name: main pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fix/**'
+    paths:
+      - 'services/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: false
+          cache: false
+
+      - name: Check code formatting (gofmt)
+        run: |
+          UNFORMATTED=$(gofmt -l services/)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "::ERROR::Files not formatted according to gofmt:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Run vet, tests and build for all services
+        run: |
+          echo "### Test & Coverage Summary" >> $GITHUB_STEP_SUMMARY
+
+          for dir in services/*/; do
+            if [ -f "${dir}go.mod" ]; then
+              service_name=$(basename "$dir")
+              echo "=== Testing $service_name ==="
+
+              (cd "$dir" && go vet ./...)
+              (cd "$dir" && go test -v -race -coverprofile=coverage.out -covermode=atomic ./...)
+              (cd "$dir" && go build -v -ldflags="-s -w" -o /dev/null ./cmd/...)
+
+              echo "#### Service: \`$service_name\`" >> $GITHUB_STEP_SUMMARY
+              echo '```text' >> $GITHUB_STEP_SUMMARY
+              (cd "$dir" && go tool cover -func=coverage.out) >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done

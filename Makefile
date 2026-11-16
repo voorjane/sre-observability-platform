@@ -18,4 +18,13 @@ clean:
 	$(DC) down --remove-orphans
 	docker image prune -f
 
-.PHONY: build up down logs ps clean
+test:
+	cd services/order-api && go test -v -race ./...
+	cd services/payment-worker && go test -v -race ./...
+
+fmt:
+	gofmt -w services/
+	cd services/order-api && go vet ./...
+	cd services/payment-worker && go vet ./...
+
+.PHONY: build up down logs ps clean test fmt

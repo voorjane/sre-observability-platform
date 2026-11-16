@@ -16,8 +16,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Port != "8000" {
 		t.Errorf("expected port 8000, got %s", cfg.Port)
 	}
-	if cfg.PaymentWorkerURL != "http://payment-worker:8001" {
-		t.Errorf("expected payment worker URL http://payment-worker:8001, got %s", cfg.PaymentWorkerURL)
+	if cfg.PaymentWorkerURL != "http://127.0.0.1:8001" {
+		t.Errorf("expected payment worker URL http://127.0.0.1:8001, got %s", cfg.PaymentWorkerURL)
 	}
 	if cfg.PaymentTimeout != 5*time.Second {
 		t.Errorf("expected payment timeout 5s, got %v", cfg.PaymentTimeout)
