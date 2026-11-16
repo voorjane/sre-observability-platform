@@ -7,13 +7,13 @@ import (
 
 // Config holds the application configuration parameters.
 type Config struct {
-	Port            string
+	Port             string
 	PaymentWorkerURL string
-	PaymentTimeout  time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	ShutdownTimeout time.Duration
-	Sprint          string
+	PaymentTimeout   time.Duration
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	ShutdownTimeout  time.Duration
+	Sprint           string
 }
 
 // Load loads configuration from environment variables with sensible defaults.
