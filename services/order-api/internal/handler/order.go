@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -28,6 +26,16 @@ func NewOrderHandler(orderService service.OrderService) *OrderHandler {
 
 // CreateOrder handles POST /api/v1/orders.
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	var req model.OrderRequest
+	if err := decodeRequest(r.Body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	// Chaos simulation query parameters
 	if latencyStr := r.URL.Query().Get("latency_ms"); latencyStr != "" {
 		if ms, err := strconv.Atoi(latencyStr); err == nil && ms > 0 {
@@ -38,34 +46,26 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	if failRateStr := r.URL.Query().Get("fail_rate"); failRateStr != "" {
 		if rate, err := strconv.ParseFloat(failRateStr, 64); err == nil {
 			if rand.Float64() < rate {
-				http.Error(w, `{"error":"chaos injected failure"}`, http.StatusInternalServerError)
+				writeError(w, http.StatusInternalServerError, "chaos injected failure")
 				return
 			}
 		}
-	}
-
-	var req model.OrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
-		return
 	}
 
 	orderResp, err := h.orderService.CreateOrder(r.Context(), req)
 	if err != nil {
 		var unreachableErr *payment.UnreachableError
 		if errors.As(err, &unreachableErr) || errors.Is(err, payment.ErrUnreachable) {
-			http.Error(w, fmt.Sprintf(`{"error":"payment-worker unreachable: %v"}`, err), http.StatusServiceUnavailable)
+			writeError(w, http.StatusServiceUnavailable, "payment-worker unreachable")
 			return
 		}
 		if errors.Is(err, payment.ErrInvalidResponse) {
-			http.Error(w, `{"error":"invalid response from payment-worker"}`, http.StatusBadGateway)
+			writeError(w, http.StatusBadGateway, "invalid response from payment-worker")
 			return
 		}
-		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(orderResp)
+	writeJSON(w, http.StatusCreated, orderResp)
 }
