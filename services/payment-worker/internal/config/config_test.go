@@ -1,14 +1,13 @@
 package config
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
 func TestLoadDefaults(t *testing.T) {
-	os.Unsetenv("PORT")
-	os.Unsetenv("PROCESS_DELAY")
+	t.Setenv("PORT", "")
+	t.Setenv("PROCESS_DELAY", "")
 
 	cfg := Load()
 
@@ -24,12 +23,8 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadCustom(t *testing.T) {
-	os.Setenv("PORT", "8888")
-	os.Setenv("PROCESS_DELAY", "50ms")
-	defer func() {
-		os.Unsetenv("PORT")
-		os.Unsetenv("PROCESS_DELAY")
-	}()
+	t.Setenv("PORT", "8888")
+	t.Setenv("PROCESS_DELAY", "50ms")
 
 	cfg := Load()
 
