@@ -76,23 +76,45 @@ func TestProcessSuccess(t *testing.T) {
 }
 
 func TestProcessInvalidPayload(t *testing.T) {
-	mockSvc := &mockPaymentService{}
-	ph := NewPaymentHandler(mockSvc)
-
-	req := httptest.NewRequest(http.MethodPost, "/internal/process", bytes.NewReader([]byte("not valid json")))
-	rr := httptest.NewRecorder()
-
-	ph.Process(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d", rr.Code)
+	tests := []struct {
+		name    string
+		body    string
+		message string
+	}{
+		{"invalid JSON", "not valid json", "invalid request payload"},
+		{"empty body", "", "invalid request payload"},
+		{"wrong type", `{"order_id":"ord-1","amount":"10"}`, "invalid request payload"},
+		{"array", `[]`, "invalid request payload"},
+		{"trailing garbage", `{"order_id":"ord-1","amount":10} garbage`, "invalid request payload"},
+		{"multiple values", `{"order_id":"ord-1","amount":10} {}`, "invalid request payload"},
+		{"null", `null`, "order_id is required"},
+		{"missing fields", `{}`, "order_id is required"},
+		{"blank order", `{"order_id":" \t","amount":10}`, "order_id is required"},
+		{"zero amount", `{"order_id":"ord-1","amount":0}`, "amount must be greater than zero"},
+		{"negative amount", `{"order_id":"ord-1","amount":-10}`, "amount must be greater than zero"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			called := false
+			mockSvc := &mockPaymentService{processPaymentFunc: func(context.Context, model.PaymentRequest) (*model.PaymentResponse, error) {
+				called = true
+				return nil, errors.New("invalid payment reached service")
+			}}
+			req := httptest.NewRequest(http.MethodPost, "/internal/process", bytes.NewBufferString(tt.body))
+			rr := httptest.NewRecorder()
+			NewPaymentHandler(mockSvc).Process(rr, req)
+			assertErrorResponse(t, rr, http.StatusBadRequest, tt.message)
+			if called {
+				t.Fatal("invalid request called the payment service")
+			}
+		})
 	}
 }
 
 func TestProcessServiceError(t *testing.T) {
 	mockSvc := &mockPaymentService{
 		processPaymentFunc: func(ctx context.Context, req model.PaymentRequest) (*model.PaymentResponse, error) {
-			return nil, errors.New("database failure")
+			return nil, errors.New("database \"failure\"\nwith details")
 		},
 	}
 	ph := NewPaymentHandler(mockSvc)
@@ -106,7 +128,22 @@ func TestProcessServiceError(t *testing.T) {
 
 	ph.Process(rr, req)
 
-	if rr.Code != http.StatusInternalServerError {
-		t.Fatalf("expected status 500, got %d", rr.Code)
+	assertErrorResponse(t, rr, http.StatusInternalServerError, "internal server error")
+}
+
+func assertErrorResponse(t *testing.T, rr *httptest.ResponseRecorder, status int, message string) {
+	t.Helper()
+	if rr.Code != status {
+		t.Fatalf("expected status %d, got %d: %s", status, rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("Content-Type"); got != "application/json" {
+		t.Errorf("expected application/json, got %q", got)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("invalid JSON error response: %v: %s", err, rr.Body.String())
+	}
+	if len(payload) != 1 || payload["error"] != message {
+		t.Errorf("expected error %q, got %v", message, payload)
 	}
 }

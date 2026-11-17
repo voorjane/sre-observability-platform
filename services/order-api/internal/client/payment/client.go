@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 var (
 	// ErrUnreachable is returned when the payment-worker cannot be reached.
 	ErrUnreachable = errors.New("payment-worker unreachable")
-	// ErrInvalidResponse is returned when the response from payment-worker cannot be parsed.
+	// ErrInvalidResponse is returned when payment-worker violates its response contract.
 	ErrInvalidResponse = errors.New("invalid response from payment-worker")
 )
 
@@ -87,8 +88,15 @@ func (c *HTTPClient) ProcessPayment(ctx context.Context, req model.PaymentReques
 		return nil, ErrInvalidResponse
 	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, &UnreachableError{Err: err}
+	}
 	var paymentResp model.PaymentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&paymentResp); err != nil {
+	if err := json.Unmarshal(body, &paymentResp); err != nil {
+		return nil, ErrInvalidResponse
+	}
+	if paymentResp.OrderID != req.OrderID || paymentResp.Status != "PROCESSED" {
 		return nil, ErrInvalidResponse
 	}
 

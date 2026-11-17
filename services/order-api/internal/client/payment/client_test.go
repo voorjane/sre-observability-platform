@@ -55,8 +55,9 @@ func TestProcessPaymentSuccess(t *testing.T) {
 }
 
 func TestProcessPaymentUnreachable(t *testing.T) {
-	// Connect to an invalid address
-	client := NewClient("http://127.0.0.1:54321", 50*time.Millisecond)
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	server.Close()
+	client := NewClient(server.URL, time.Second)
 	_, err := client.ProcessPayment(context.Background(), model.PaymentRequest{
 		OrderID: "test-ord-123",
 		Amount:  49.99,
@@ -71,23 +72,60 @@ func TestProcessPaymentUnreachable(t *testing.T) {
 }
 
 func TestProcessPaymentInvalidResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not-a-valid-json"))
-	}))
-	defer server.Close()
-
-	client := NewClient(server.URL, 2*time.Second)
-	_, err := client.ProcessPayment(context.Background(), model.PaymentRequest{
-		OrderID: "test-ord-123",
-		Amount:  49.99,
-	})
-
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	tests := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"bad JSON", http.StatusOK, "not-a-valid-json"},
+		{"empty body", http.StatusOK, ""},
+		{"null", http.StatusOK, `null`},
+		{"missing fields", http.StatusOK, `{}`},
+		{"different order", http.StatusOK, `{"order_id":"other-order","status":"PROCESSED"}`},
+		{"unexpected payment status", http.StatusOK, `{"order_id":"test-ord-123","status":"FAILED"}`},
+		{"trailing garbage", http.StatusOK, `{"order_id":"test-ord-123","status":"PROCESSED"} garbage`},
+		{"multiple values", http.StatusOK, `{"order_id":"test-ord-123","status":"PROCESSED"} {}`},
+		{"worker client error", http.StatusBadRequest, `{"error":"invalid request payload"}`},
+		{"worker internal error", http.StatusInternalServerError, `{"error":"internal server error"}`},
+		{"worker unavailable response", http.StatusServiceUnavailable, `{"error":"unavailable"}`},
 	}
-	if !errors.Is(err, ErrInvalidResponse) {
-		t.Errorf("expected ErrInvalidResponse, got %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+			client := NewClient(server.URL, time.Second)
+			_, err := client.ProcessPayment(context.Background(), model.PaymentRequest{OrderID: "test-ord-123", Amount: 49.99})
+			if !errors.Is(err, ErrInvalidResponse) {
+				t.Errorf("expected ErrInvalidResponse, got %v", err)
+			}
+		})
+	}
+}
+
+func TestProcessPaymentTimeout(t *testing.T) {
+	for _, phase := range []string{"before headers", "during body"} {
+		t.Run(phase, func(t *testing.T) {
+			release := make(chan struct{})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if phase == "during body" {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"order_id":`))
+					w.(http.Flusher).Flush()
+				}
+				<-release
+			}))
+			defer server.Close()
+			defer close(release)
+
+			client := NewClient(server.URL, 50*time.Millisecond)
+			_, err := client.ProcessPayment(context.Background(), model.PaymentRequest{OrderID: "test-ord-123", Amount: 49.99})
+			if !errors.Is(err, ErrUnreachable) {
+				t.Errorf("expected ErrUnreachable on timeout, got %v", err)
+			}
+		})
 	}
 }

@@ -1,15 +1,14 @@
 package config
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
 func TestLoadDefaults(t *testing.T) {
-	os.Unsetenv("PORT")
-	os.Unsetenv("PAYMENT_WORKER_URL")
-	os.Unsetenv("PAYMENT_TIMEOUT")
+	t.Setenv("PORT", "")
+	t.Setenv("PAYMENT_WORKER_URL", "")
+	t.Setenv("PAYMENT_TIMEOUT", "")
 
 	cfg := Load()
 
@@ -28,14 +27,9 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadCustom(t *testing.T) {
-	os.Setenv("PORT", "9000")
-	os.Setenv("PAYMENT_WORKER_URL", "http://custom-payment:9001")
-	os.Setenv("PAYMENT_TIMEOUT", "3s")
-	defer func() {
-		os.Unsetenv("PORT")
-		os.Unsetenv("PAYMENT_WORKER_URL")
-		os.Unsetenv("PAYMENT_TIMEOUT")
-	}()
+	t.Setenv("PORT", "9000")
+	t.Setenv("PAYMENT_WORKER_URL", "http://custom-payment:9001")
+	t.Setenv("PAYMENT_TIMEOUT", "3s")
 
 	cfg := Load()
 
