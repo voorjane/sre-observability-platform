@@ -27,4 +27,7 @@ fmt:
 	cd services/order-api && go vet ./...
 	cd services/payment-worker && go vet ./...
 
-.PHONY: build up down logs ps clean test fmt
+check-prometheus:
+	$(DC) run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yml
+
+.PHONY: build up down logs ps clean test fmt check-prometheus

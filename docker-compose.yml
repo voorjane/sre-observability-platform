@@ -28,6 +28,34 @@ services:
     networks:
       - sre-net
 
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-35d}
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      - order-api
+      - payment-worker
+    networks:
+      - sre-net
+
+volumes:
+  prometheus-data:
+
 networks:
   sre-net:
     driver: bridge
