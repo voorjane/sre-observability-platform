@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"order-api/internal/telemetry"
 )
 
 // LoggingMiddleware logs incoming HTTP requests with method, path, and duration.
@@ -18,9 +20,11 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 // NewRouter sets up routing for the order-api service.
 func NewRouter(healthHandler *HealthHandler, orderHandler *OrderHandler) http.Handler {
 	mux := http.NewServeMux()
+	metrics := telemetry.New("order-api")
 
 	mux.HandleFunc("GET /healthz", healthHandler.Healthz)
 	mux.HandleFunc("POST /api/v1/orders", orderHandler.CreateOrder)
+	mux.Handle("GET /metrics", metrics.Handler())
 
-	return LoggingMiddleware(mux)
+	return LoggingMiddleware(metrics.Middleware(mux))
 }
