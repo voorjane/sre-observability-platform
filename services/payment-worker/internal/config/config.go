@@ -13,6 +13,7 @@ type Config struct {
 	WriteTimeout    time.Duration
 	ShutdownTimeout time.Duration
 	Sprint          string
+	Tracing         TracingConfig
 }
 
 // Load loads configuration from environment variables with sensible defaults.
@@ -36,5 +37,6 @@ func Load() *Config {
 		WriteTimeout:    15 * time.Second,
 		ShutdownTimeout: 5 * time.Second,
 		Sprint:          "1",
+		Tracing:         loadTracing(),
 	}
 }
