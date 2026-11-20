@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/felixge/httpsnoop"
 	"go.opentelemetry.io/otel/attribute"
@@ -41,6 +42,7 @@ func ServerHandler(route string, next http.Handler) http.Handler {
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(attribute.String("http.request.method", method), attribute.String("http.route", route)),
 		)
+		rememberRequestSpan(ctx)
 		writer, status := observeResponse(w)
 		completed := false
 		defer func() {
@@ -83,8 +85,29 @@ func NetworkErrorKind(err error) string {
 	return "unreachable"
 }
 
+// Only method-qualified templates are safe: redirect patterns may be raw paths.
+func requestRoute(mux *http.ServeMux, r *http.Request) string {
+	_, pattern := mux.Handler(r)
+	if method, route, ok := strings.Cut(pattern, " "); ok &&
+		(method == r.Method || method == http.MethodGet && r.Method == http.MethodHead) {
+		return route
+	}
+	return "unmatched"
+}
+
 // observeResponse preserves optional writer interfaces and captures the first final status.
 func observeResponse(w http.ResponseWriter) (http.ResponseWriter, func() int) {
+	writer, status := observeResponseStatus(w)
+	return writer, func() int {
+		if code := status(); code != 0 {
+			return code
+		}
+		return http.StatusOK
+	}
+}
+
+// observeResponseStatus leaves zero until a response is actually committed.
+func observeResponseStatus(w http.ResponseWriter) (http.ResponseWriter, func() int) {
 	status := 0
 	implicitOK := func() {
 		if status == 0 {
@@ -119,5 +142,5 @@ func observeResponse(w http.ResponseWriter) (http.ResponseWriter, func() int) {
 			}
 		},
 	})
-	return writer, func() int { implicitOK(); return status }
+	return writer, func() int { return status }
 }

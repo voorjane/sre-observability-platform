@@ -18,13 +18,14 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 
 	"payment-worker/internal/service"
 	"payment-worker/internal/telemetry"
 )
 
 func TestRouterMetricsIncludePaymentProcessingLatency(t *testing.T) {
-	router := NewRouter(NewHealthHandler("payment-worker", "2"), NewPaymentHandler(service.NewPaymentService(30*time.Millisecond)))
+	router := NewRouter(NewHealthHandler("payment-worker", "2"), NewPaymentHandler(service.NewPaymentService(30*time.Millisecond)), zap.NewNop())
 	for _, request := range []struct {
 		body string
 		code int
@@ -78,7 +79,8 @@ func TestPaymentRouterTracing(t *testing.T) {
 			exporter := tracetest.NewInMemoryExporter()
 			provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter), sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", "payment-worker"))))
 			defer provider.Shutdown(context.Background())
-			router := telemetry.WithTracerProvider(provider, NewRouter(NewHealthHandler("payment-worker", "2"), NewPaymentHandler(service.NewPaymentService(5*time.Millisecond))))
+			var logs bytes.Buffer
+			router := telemetry.WithTracerProvider(provider, NewRouter(NewHealthHandler("payment-worker", "2"), NewPaymentHandler(service.NewPaymentService(5*time.Millisecond)), telemetry.NewLoggerWithWriter("payment-worker", &logs)))
 			req := httptest.NewRequest(http.MethodPost, "/internal/process?customer=private-query", strings.NewReader(test.body))
 			req.Header.Set("traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
 			if test.cancelled {
@@ -99,6 +101,16 @@ func TestPaymentRouterTracing(t *testing.T) {
 				t.Fatalf("expected %d spans, got %d", test.spans, len(spans))
 			}
 			server := spans[len(spans)-1]
+			var entry map[string]any
+			if err := json.NewDecoder(&logs).Decode(&entry); err != nil {
+				t.Fatal(err)
+			}
+			if entry["service"] != "payment-worker" || entry["status_code"] != float64(test.code) || entry["span_id"] != server.SpanContext.SpanID().String() || entry["trace_id"] != server.SpanContext.TraceID().String() {
+				t.Fatalf("request log does not match server span: %v", entry)
+			}
+			if test.cancelled && entry["error.type"] != "canceled" || test.code == 400 && entry["error.type"] != "invalid_request_fields" {
+				t.Fatalf("request error category missing: %v", entry)
+			}
 			if server.Name != "POST /internal/process" || server.SpanKind != trace.SpanKindServer || server.Parent.SpanID().String() != "2222222222222222" {
 				t.Fatalf("unexpected server span: %+v", server)
 			}

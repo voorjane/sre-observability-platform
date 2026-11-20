@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 
 	"order-api/internal/client/payment"
 	"order-api/internal/model"
+	"order-api/internal/telemetry"
 )
 
 func TestRouterMetricsIncludeOrderErrorsAndChaosLatency(t *testing.T) {
@@ -26,7 +28,8 @@ func TestRouterMetricsIncludeOrderErrorsAndChaosLatency(t *testing.T) {
 			return &model.OrderResponse{OrderID: "ord-1", Status: "COMPLETED", PaymentStatus: "PROCESSED"}, nil
 		}
 	}}
-	router := NewRouter(NewHealthHandler("order-api", "2"), NewOrderHandler(svc))
+	var logs bytes.Buffer
+	router := NewRouter(NewHealthHandler("order-api", "2"), NewOrderHandler(svc), telemetry.NewLoggerWithWriter("order-api", &logs))
 	for _, request := range []struct {
 		path string
 		body string
@@ -42,6 +45,20 @@ func TestRouterMetricsIncludeOrderErrorsAndChaosLatency(t *testing.T) {
 		router.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, request.path, bytes.NewBufferString(request.body)))
 		if rr.Code != request.code {
 			t.Fatalf("expected HTTP %d, got %d", request.code, rr.Code)
+		}
+		var entry map[string]any
+		if err := json.NewDecoder(&logs).Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		category := map[int]string{400: "invalid_request_fields", 500: "chaos_injected_failure", 502: "invalid_dependency_response", 503: "dependency_unreachable"}[request.code]
+		if entry["service"] != "order-api" || entry["status_code"] != float64(request.code) || entry["route"] != "/api/v1/orders" {
+			t.Fatalf("incorrect request log: %v", entry)
+		}
+		if category != "" && entry["error.type"] != category {
+			t.Fatalf("incorrect error log: %v", entry)
+		}
+		if request.code == 500 && entry["duration_ms"].(float64) < 40 {
+			t.Error("request log excluded chaos latency")
 		}
 	}
 	for i := 0; i < 2; i++ {

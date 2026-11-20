@@ -1,24 +1,15 @@
 package handler
 
 import (
-	"log"
 	"net/http"
-	"time"
+
+	"go.uber.org/zap"
 
 	"payment-worker/internal/telemetry"
 )
 
-// LoggingMiddleware logs incoming HTTP requests with method, path, and duration.
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start))
-	})
-}
-
 // NewRouter sets up routing for the payment-worker service.
-func NewRouter(healthHandler *HealthHandler, paymentHandler *PaymentHandler) http.Handler {
+func NewRouter(healthHandler *HealthHandler, paymentHandler *PaymentHandler, logger *zap.Logger) http.Handler {
 	mux := http.NewServeMux()
 	metrics := telemetry.New("payment-worker")
 
@@ -26,5 +17,5 @@ func NewRouter(healthHandler *HealthHandler, paymentHandler *PaymentHandler) htt
 	mux.Handle("POST /internal/process", telemetry.ServerHandler("/internal/process", http.HandlerFunc(paymentHandler.Process)))
 	mux.Handle("GET /metrics", metrics.Handler())
 
-	return LoggingMiddleware(metrics.Middleware(mux))
+	return telemetry.RequestLogging(logger, mux, metrics.Middleware(mux))
 }
