@@ -48,6 +48,7 @@ func (a *App) Run(ctx context.Context) (runErr error) {
 	if err != nil {
 		return err
 	}
+	a.httpServer.Handler = telemetry.WithTracerProvider(provider, a.httpServer.Handler)
 	defer func() {
 		// HTTP drain and telemetry flush share the same total shutdown budget.
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)

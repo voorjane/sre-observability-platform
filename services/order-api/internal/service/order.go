@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
 
 	"order-api/internal/client/payment"
 	"order-api/internal/model"
+	"order-api/internal/telemetry"
 )
 
 // IDGenerator generates unique order identifiers.
@@ -45,6 +47,8 @@ func NewOrderServiceWithIDGenerator(paymentClient payment.Client, gen IDGenerato
 
 // CreateOrder generates an order, delegates payment to payment-worker, and produces the finalized order response.
 func (s *orderService) CreateOrder(ctx context.Context, req model.OrderRequest) (*model.OrderResponse, error) {
+	ctx, span := telemetry.Tracer(ctx, "order-api/service").Start(ctx, "order.create")
+	defer span.End()
 	orderID := s.generateID()
 
 	paymentReq := model.PaymentRequest{
@@ -54,6 +58,13 @@ func (s *orderService) CreateOrder(ctx context.Context, req model.OrderRequest) 
 
 	paymentResp, err := s.paymentClient.ProcessPayment(ctx, paymentReq)
 	if err != nil {
+		kind := "dependency_error"
+		if errors.Is(err, payment.ErrUnreachable) {
+			kind = "dependency_" + telemetry.NetworkErrorKind(err)
+		} else if errors.Is(err, payment.ErrInvalidResponse) {
+			kind = "invalid_dependency_response"
+		}
+		telemetry.RecordFailure(span, kind)
 		return nil, err
 	}
 

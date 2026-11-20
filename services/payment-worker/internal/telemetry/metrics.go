@@ -1,13 +1,11 @@
 package telemetry
 
 import (
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/felixge/httpsnoop"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -66,44 +64,9 @@ func (m *Metrics) Middleware(mux *http.ServeMux) http.Handler {
 		defer m.inFlight.Dec()
 
 		start := time.Now()
-		status := 0
-		implicitOK := func() {
-			if status == 0 {
-				status = http.StatusOK
-			}
-		}
-		// httpsnoop preserves optional ResponseWriter interfaces (e.g. Flusher).
-		writer := httpsnoop.Wrap(w, httpsnoop.Hooks{
-			WriteHeader: func(next httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
-				return func(code int) {
-					next(code)
-					if status == 0 && (code >= 200 || code == http.StatusSwitchingProtocols) {
-						status = code
-					}
-				}
-			},
-			Write: func(next httpsnoop.WriteFunc) httpsnoop.WriteFunc {
-				return func(body []byte) (int, error) {
-					implicitOK()
-					return next(body)
-				}
-			},
-			Flush: func(next httpsnoop.FlushFunc) httpsnoop.FlushFunc {
-				return func() {
-					implicitOK()
-					next()
-				}
-			},
-			ReadFrom: func(next httpsnoop.ReadFromFunc) httpsnoop.ReadFromFunc {
-				return func(body io.Reader) (int64, error) {
-					implicitOK()
-					return next(body)
-				}
-			},
-		})
+		writer, status := observeResponse(w)
 		mux.ServeHTTP(writer, r)
-		implicitOK()
-		code := strconv.Itoa(status)
+		code := strconv.Itoa(status())
 		m.requests.WithLabelValues(method, route, code).Inc()
 		m.duration.WithLabelValues(method, route, code).Observe(time.Since(start).Seconds())
 	})

@@ -23,7 +23,7 @@ func NewRouter(healthHandler *HealthHandler, paymentHandler *PaymentHandler) htt
 	metrics := telemetry.New("payment-worker")
 
 	mux.HandleFunc("GET /healthz", healthHandler.Healthz)
-	mux.HandleFunc("POST /internal/process", paymentHandler.Process)
+	mux.Handle("POST /internal/process", telemetry.ServerHandler("/internal/process", http.HandlerFunc(paymentHandler.Process)))
 	mux.Handle("GET /metrics", metrics.Handler())
 
 	return LoggingMiddleware(metrics.Middleware(mux))
