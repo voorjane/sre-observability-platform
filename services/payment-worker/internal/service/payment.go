@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"payment-worker/internal/model"
+	"payment-worker/internal/telemetry"
 )
 
 // PaymentService defines operations for payment processing.
@@ -25,10 +26,13 @@ func NewPaymentService(delay time.Duration) PaymentService {
 
 // ProcessPayment simulates banking authorization delay and returns the processed status.
 func (s *paymentService) ProcessPayment(ctx context.Context, req model.PaymentRequest) (*model.PaymentResponse, error) {
+	ctx, span := telemetry.Tracer(ctx, "payment-worker/service").Start(ctx, "payment.process")
+	defer span.End()
 	if s.delay > 0 {
 		select {
 		case <-time.After(s.delay):
 		case <-ctx.Done():
+			telemetry.RecordFailure(span, telemetry.NetworkErrorKind(ctx.Err()))
 			return nil, ctx.Err()
 		}
 	}

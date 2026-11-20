@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -125,6 +126,10 @@ func TestProcessPaymentTimeout(t *testing.T) {
 			_, err := client.ProcessPayment(context.Background(), model.PaymentRequest{OrderID: "test-ord-123", Amount: 49.99})
 			if !errors.Is(err, ErrUnreachable) {
 				t.Errorf("expected ErrUnreachable on timeout, got %v", err)
+			}
+			var timeout net.Error
+			if !errors.As(err, &timeout) || !timeout.Timeout() {
+				t.Errorf("timeout cause was lost: %v", err)
 			}
 		})
 	}

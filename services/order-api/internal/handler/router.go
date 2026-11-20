@@ -23,7 +23,7 @@ func NewRouter(healthHandler *HealthHandler, orderHandler *OrderHandler) http.Ha
 	metrics := telemetry.New("order-api")
 
 	mux.HandleFunc("GET /healthz", healthHandler.Healthz)
-	mux.HandleFunc("POST /api/v1/orders", orderHandler.CreateOrder)
+	mux.Handle("POST /api/v1/orders", telemetry.ServerHandler("/api/v1/orders", http.HandlerFunc(orderHandler.CreateOrder)))
 	mux.Handle("GET /metrics", metrics.Handler())
 
 	return LoggingMiddleware(metrics.Middleware(mux))
