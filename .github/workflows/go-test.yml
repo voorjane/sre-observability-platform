@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   config:
-    name: Validate Compose & Prometheus
+    name: Validate observability configuration
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -44,6 +44,9 @@ jobs:
 
       - name: Validate Prometheus configuration
         run: make check-prometheus
+
+      - name: Validate Loki and Alloy configuration
+        run: make check-logs
 
   test:
     name: Test & Lint
@@ -71,7 +74,7 @@ jobs:
 
       - name: Run vet, tests and build for all services
         run: |
-          echo "### Test & Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Test & Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
 
           for dir in services/*/; do
             if [ -f "${dir}go.mod" ]; then
@@ -82,10 +85,12 @@ jobs:
               (cd "$dir" && go test -v -race -coverprofile=coverage.out -covermode=atomic ./...)
               (cd "$dir" && go build -v -ldflags="-s -w" -o /dev/null ./cmd/...)
 
-              echo "#### Service: \`$service_name\`" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              (cd "$dir" && go tool cover -func=coverage.out) >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+              {
+                echo "#### Service: \`$service_name\`"
+                echo '```text'
+                (cd "$dir" && go tool cover -func=coverage.out)
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
             fi
           done
 

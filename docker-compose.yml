@@ -74,8 +74,55 @@ services:
     networks:
       - sre-net
 
+  loki:
+    image: grafana/loki:3.7.10
+    restart: unless-stopped
+    stop_grace_period: 60s
+    command:
+      - -config.file=/etc/loki/loki.yml
+      - -config.expand-env=true
+    environment:
+      LOKI_RETENTION_PERIOD: ${LOKI_RETENTION_PERIOD:-168h}
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./monitoring/loki:/etc/loki:ro
+      - loki-data:/loki
+    networks:
+      - sre-net
+
+  log-collector:
+    image: grafana/alloy:v1.22.0
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - --disable-reporting
+      - /etc/alloy/config.alloy
+    environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    volumes:
+      - ./monitoring/log-collector:/etc/alloy:ro
+      - type: bind
+        source: ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      - loki
+      - order-api
+      - payment-worker
+    networks:
+      - sre-net
+
 volumes:
   prometheus-data:
+  loki-data:
+  alloy-data:
 
 networks:
   sre-net:
