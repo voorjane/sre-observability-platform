@@ -3,7 +3,6 @@ package telemetry
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,14 +50,7 @@ func (m *Metrics) Middleware(mux *http.ServeMux) http.Handler {
 			mux.ServeHTTP(w, r)
 			return
 		}
-		// Go 1.22 does not expose Request.Pattern. Only method-qualified registered
-		// patterns are used as labels; redirects with raw paths stay unmatched.
-		_, pattern := mux.Handler(r)
-		route := "unmatched"
-		if registeredMethod, path, ok := strings.Cut(pattern, " "); ok &&
-			(registeredMethod == r.Method || registeredMethod == http.MethodGet && r.Method == http.MethodHead) {
-			route = path
-		}
+		route := requestRoute(mux, r)
 		method := metricMethod(r.Method)
 		m.inFlight.Inc()
 		defer m.inFlight.Dec()

@@ -10,6 +10,8 @@ on:
       - 'services/**'
       - '.github/workflows/**'
       - 'docker-compose.yml'
+      - 'docker-compose.smoke.yml'
+      - 'scripts/**'
       - 'monitoring/**'
       - 'Makefile'
       - '.env.example'
@@ -20,6 +22,8 @@ on:
       - 'services/**'
       - '.github/workflows/**'
       - 'docker-compose.yml'
+      - 'docker-compose.smoke.yml'
+      - 'scripts/**'
       - 'monitoring/**'
       - 'Makefile'
       - '.env.example'
@@ -31,7 +35,7 @@ concurrency:
 
 jobs:
   config:
-    name: Validate Compose & Prometheus
+    name: Validate observability configuration
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -40,10 +44,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Docker Compose configuration
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.smoke.yml config --quiet
 
       - name: Validate Prometheus configuration
         run: make check-prometheus
+
+      - name: Validate Loki and Alloy configuration
+        run: make check-logs
 
   test:
     name: Test & Lint
@@ -71,7 +80,7 @@ jobs:
 
       - name: Run vet, tests and build for all services
         run: |
-          echo "### Test & Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Test & Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
 
           for dir in services/*/; do
             if [ -f "${dir}go.mod" ]; then
@@ -82,22 +91,42 @@ jobs:
               (cd "$dir" && go test -v -race -coverprofile=coverage.out -covermode=atomic ./...)
               (cd "$dir" && go build -v -ldflags="-s -w" -o /dev/null ./cmd/...)
 
-              echo "#### Service: \`$service_name\`" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              (cd "$dir" && go tool cover -func=coverage.out) >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+              {
+                echo "#### Service: \`$service_name\`"
+                echo '```text'
+                (cd "$dir" && go tool cover -func=coverage.out)
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
             fi
           done
 
+      - name: Save coverage profiles
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: services/*/coverage.out
+          if-no-files-found: warn
+          retention-days: 14
+
   docker-build:
-    name: Build Docker images
+    name: Build & smoke observability stack
     needs: [test, config]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build both service images
-        run: docker compose build order-api payment-worker
+      - name: Run isolated smoke test
+        run: make smoke
+
+      - name: Save smoke evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-evidence
+          path: artifacts/smoke/
+          if-no-files-found: warn
+          retention-days: 7

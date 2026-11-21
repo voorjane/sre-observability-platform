@@ -30,4 +30,11 @@ fmt:
 check-prometheus:
 	$(DC) run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yml
 
-.PHONY: build up down logs ps clean test fmt check-prometheus
+check-logs:
+	$(DC) run --rm --no-deps loki -config.file=/etc/loki/loki.yml -config.expand-env=true -verify-config=true
+	$(DC) run --rm --no-deps log-collector validate /etc/alloy/config.alloy
+
+smoke:
+	python3 scripts/smoke.py --compose "$(DC)"
+
+.PHONY: build up down logs ps clean test fmt check-prometheus check-logs smoke

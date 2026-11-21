@@ -39,3 +39,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local smoke evidence and Python bytecode
+artifacts/
+__pycache__/
