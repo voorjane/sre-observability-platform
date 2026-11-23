@@ -52,9 +52,9 @@ def all_panels(panels):
 
 
 class Smoke:
-    def __init__(self, args):
+    def __init__(self, args, project_prefix="sre-smoke-"):
         self.timeout = args.timeout
-        self.project = "sre-smoke-" + secrets.token_hex(6)
+        self.project = project_prefix + secrets.token_hex(6)
         self.output = args.artifacts_dir.resolve() / self.project
         self.output.mkdir(parents=True)
         self.env = dict(os.environ, COMPOSE_PROJECT_NAME=self.project,
@@ -133,13 +133,14 @@ class Smoke:
         self.compose("up", "--detach", "--build", timeout=480)
         for service, port in [("order-api", 8000), ("payment-worker", 8001),
                               ("prometheus", 9090), ("jaeger", 16686), ("loki", 3100),
-                              ("grafana", 3000)]:
+                              ("grafana", 3000), ("alertmanager", 9093), ("alert-webhook", 8080)]:
             self.resolve_port(service, port)
         self.report["endpoints"] = self.urls
         self.save_report()
         for service, path in [("order-api", "/healthz"), ("payment-worker", "/healthz"),
                               ("prometheus", "/-/ready"), ("jaeger", "/api/v3/services"),
-                              ("loki", "/ready"), ("grafana", "/api/health")]:
+                              ("loki", "/ready"), ("grafana", "/api/health"),
+                              ("alertmanager", "/-/ready"), ("alert-webhook", "/healthz")]:
             self.wait(service + " readiness", lambda s=service, p=path: self.ready(s, p))
         self.wait("Prometheus targets", self.targets)
 
@@ -293,6 +294,14 @@ class Smoke:
         require(len(slo) == 1 and len(slo[0]["rules"]) == 43, "SLO recording rules not loaded")
         require(all(rule.get("health") == "ok" and not rule.get("lastError")
                     for rule in slo[0]["rules"]), "SLO rule evaluation failed")
+        extra = {g["name"]: g for g in groups if g["name"] in
+                 {"order-burn-rate", "availability-alerts", "telemetry-alerts"}}
+        require(set(extra) == {"order-burn-rate", "availability-alerts", "telemetry-alerts"},
+                "Production alerting groups were not loaded")
+        require(all(r.get("health") == "ok" and not r.get("lastError")
+                    for g in extra.values() for r in g["rules"]), "Alerting rule evaluation failed")
+        require(all(r.get("state") == "inactive" for r in extra["availability-alerts"]["rules"]),
+                "Fresh history incorrectly fired a production SLO alert")
         values = {}
         for name in ["window_ready:bool", "availability:ratio", "budget_remaining:ratio"]:
             query = 'order:slo_' + name + '{window="30d"}'
@@ -303,7 +312,7 @@ class Smoke:
             else:
                 require(not result, "Fresh stack reports a confirmed 30d SLO or budget")
             values[name] = result
-        return {"group": slo[0], "fresh_window_checks": values}
+        return {"group": slo[0], "alerting_groups": extra, "fresh_window_checks": values}
 
     def grafana_sources(self):
         expected = {"prometheus": ("prometheus", "http://prometheus:9090"),

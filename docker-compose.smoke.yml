@@ -17,3 +17,8 @@ services:
     ports: !override ["127.0.0.1::3100"]
   grafana:
     ports: !override ["127.0.0.1::3000"]
+  alertmanager:
+    ports: !override ["127.0.0.1::9093"]
+  alert-webhook:
+    image: sre-observability-platform-alert-webhook:smoke
+    ports: !override ["127.0.0.1::8080"]

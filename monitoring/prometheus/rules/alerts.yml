@@ -1,0 +1,67 @@
+# Production policy: docs/slo.md. Demo rules are loaded only by the isolated demo profile.
+groups:
+- name: order-burn-rate
+  rules:
+  - record: order:slo_burn_rate:observed
+    expr: (order:slo_error_ratio:observed{window=~"5m|30m|1h|6h"} / 0.001) and on() ((min(up{job="order-api"}) ==
+      1) and on() (max(time() - timestamp(up{job="order-api"})) <= 30))
+  - record: order:slo_burn_rate:ratio
+    expr: (order:slo_error_ratio:ratio{window=~"5m|30m|1h|6h"} / 0.001) and on() ((min(up{job="order-api"}) == 1)
+      and on() (max(time() - timestamp(up{job="order-api"})) <= 30)) and on(service,method,handler,window) (order:slo_window_ready:bool
+      == 1)
+- name: availability-alerts
+  rules:
+  - alert: OrderAvailabilityBudgetBurnCritical
+    expr: |-
+      order:slo_burn_rate:ratio{window="1h"} > 14.4
+      and on(service,method,handler) (order:slo_burn_rate:ratio{window="5m"} > 14.4)
+      and on(service,method,handler) (order:slo_requests:increase{window="1h"} >= 100)
+      and on(service,method,handler) (order:slo_requests:increase{window="5m"} >= 20)
+    for: 2m
+    labels:
+      service: order-api
+      severity: critical
+      slo: order-availability
+      profile: production
+    annotations:
+      summary: 'order-api: availability budget burn (critical)'
+      description: 'SLO 99.9%; burn rate {{ printf "%.2f" $value }}x over 1h, also >14.4x over 5m. Profile: production.'
+      dashboard_url: '{{ $externalLabels.dashboard_base_url }}/d/golden-signals?var-service=order-api&var-route=/api/v1/orders'
+      slo_dashboard_url: '{{ $externalLabels.dashboard_base_url }}/d/order-slo'
+      runbook_url: '{{ $externalLabels.runbook_base_url }}/availability.md'
+  - alert: OrderAvailabilityBudgetBurnWarning
+    expr: |-
+      order:slo_burn_rate:ratio{window="6h"} > 6
+      and on(service,method,handler) (order:slo_burn_rate:ratio{window="30m"} > 6)
+      and on(service,method,handler) (order:slo_requests:increase{window="6h"} >= 300)
+      and on(service,method,handler) (order:slo_requests:increase{window="30m"} >= 50)
+    for: 5m
+    labels:
+      service: order-api
+      severity: warning
+      slo: order-availability
+      profile: production
+    annotations:
+      summary: 'order-api: availability budget burn (warning)'
+      description: 'SLO 99.9%; burn rate {{ printf "%.2f" $value }}x over 6h, also >6x over 30m. Profile: production.'
+      dashboard_url: '{{ $externalLabels.dashboard_base_url }}/d/golden-signals?var-service=order-api&var-route=/api/v1/orders'
+      slo_dashboard_url: '{{ $externalLabels.dashboard_base_url }}/d/order-slo'
+      runbook_url: '{{ $externalLabels.runbook_base_url }}/availability.md'
+- name: telemetry-alerts
+  rules:
+  - alert: ApplicationTargetDown
+    expr: |-
+      label_replace((up{job=~"order-api|payment-worker"} == 0) or (time() - timestamp(up{job=~"order-api|payment-worker"}) > 30), "service", "$1", "job", "(.*)")
+      or label_replace(absent(up{job="order-api"}), "service", "order-api", "", "")
+      or label_replace(absent(up{job="payment-worker"}), "service", "payment-worker", "", "")
+    for: 1m
+    labels:
+      severity: critical
+      slo: telemetry
+      profile: production
+    annotations:
+      summary: Application scrape unavailable
+      description: Scrape {{ $labels.job }} {{ $labels.instance }} is failed, missing or stale. Server-side SLI
+        may miss requests.
+      dashboard_url: '{{ $externalLabels.dashboard_base_url }}/d/golden-signals?var-service={{ $labels.service }}'
+      runbook_url: '{{ $externalLabels.runbook_base_url }}/telemetry.md'

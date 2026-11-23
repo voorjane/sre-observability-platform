@@ -1,0 +1,1220 @@
+# S4 production policy. Ratio/readiness inputs are outputs of S3-02, tested separately.
+rule_files:
+- ../rules/alerts.yml
+evaluation_interval: 1m
+fuzzy_compare: true
+group_eval_order:
+- order-burn-rate
+- availability-alerts
+- telemetry-alerts
+tests:
+- name: healthy traffic
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: critical long window alone
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: critical short window alone
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: warning long window alone
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .01+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .01+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: warning short window alone
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .01+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .01+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: 'strict critical threshold: exactly 14.4x is not a page'
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .0144+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .0144+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .0144+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .0144+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: 'strict warning threshold: exactly 6x is not a warning'
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .006+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .006+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .006+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .006+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: critical pending at 1m, firing at 2m, resolved at 5m
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x4 0+0x15
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x4 0+0x15
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02+0x4 0+0x15
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02+0x4 0+0x15
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 1h
+        severity: critical
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (critical)'
+        description: 'SLO 99.9%; burn rate 20.00x over 1h, also >14.4x over 5m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+  - eval_time: 4m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 1h
+        severity: critical
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (critical)'
+        description: 'SLO 99.9%; burn rate 20.00x over 1h, also >14.4x over 5m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+  - eval_time: 5m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="OrderAvailabilityBudgetBurnCritical",alertstate="pending"})
+    eval_time: 1m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: warning pending at 4m, firing at 5m, resolved at 8m
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .01+0x7 0+0x12
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .01+0x7 0+0x12
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .01+0x7 0+0x12
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .01+0x7 0+0x12
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 6h
+        severity: warning
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (warning)'
+        description: 'SLO 99.9%; burn rate 10.00x over 6h, also >6x over 30m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+  - eval_time: 7m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 6h
+        severity: warning
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (warning)'
+        description: 'SLO 99.9%; burn rate 10.00x over 6h, also >6x over 30m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+  - eval_time: 8m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 8m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 8m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: one-minute spike shorter than critical for
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02 0+0x19
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02 0+0x19
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02 0+0x19
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02 0+0x19
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: both severities are visible before Alertmanager inhibition
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 6m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 1h
+        severity: critical
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (critical)'
+        description: 'SLO 99.9%; burn rate 20.00x over 1h, also >14.4x over 5m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+  - eval_time: 6m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts:
+    - exp_labels:
+        service: order-api
+        method: POST
+        handler: /api/v1/orders
+        window: 6h
+        severity: warning
+        slo: order-availability
+        profile: production
+      exp_annotations:
+        summary: 'order-api: availability budget burn (warning)'
+        description: 'SLO 99.9%; burn rate 20.00x over 6h, also >6x over 30m. Profile: production.'
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api&var-route=/api/v1/orders
+        slo_dashboard_url: http://localhost:3000/d/order-slo
+        runbook_url: http://localhost:8085/runbooks/availability.md
+- name: zero traffic with no eligible ratio
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: critical minimum long volume
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 99+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: critical minimum short volume
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 19+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: warning minimum long volume
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 299+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: warning minimum short volume
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 49+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .5+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: .5+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: incomplete long history cannot use a provisional ratio
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: missing long ratio cancels pending
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x20
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: .02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02 stale
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: .02 stale
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: OrderAvailabilityBudgetBurnWarning
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: failed scrape cancels burn and produces target alert
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 0+0x1 1+0x18
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0.02+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 0m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+  - eval_time: 1m
+    alertname: ApplicationTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: order-api
+        service: order-api
+        severity: critical
+        slo: telemetry
+        profile: production
+        instance: a
+      exp_annotations:
+        summary: Application scrape unavailable
+        description: Scrape order-api a is failed, missing or stale. Server-side SLI may miss requests.
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api
+        runbook_url: http://localhost:8085/runbooks/telemetry.md
+  - eval_time: 2m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+- name: missing target is detected without a source up series
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 0m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+  - eval_time: 1m
+    alertname: ApplicationTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: order-api
+        service: order-api
+        severity: critical
+        slo: telemetry
+        profile: production
+      exp_annotations:
+        summary: Application scrape unavailable
+        description: Scrape order-api  is failed, missing or stale. Server-side SLI may miss requests.
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api
+        runbook_url: http://localhost:8085/runbooks/telemetry.md
+  - eval_time: 1m
+    alertname: OrderAvailabilityBudgetBurnCritical
+    exp_alerts: []
+- name: stale target still fires target alert
+  interval: 1m
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1 stale
+  - series: up{job="payment-worker",instance="b"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}
+    values: 1+0x20
+  - series: order:slo_error_ratio:ratio{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_error_ratio:observed{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 0+0x20
+  - series: order:slo_requests:increase{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1000+0x20
+  - series: order:slo_window_ready:bool{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: ApplicationTargetDown
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: ApplicationTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: order-api
+        service: order-api
+        severity: critical
+        slo: telemetry
+        profile: production
+      exp_annotations:
+        summary: Application scrape unavailable
+        description: Scrape order-api  is failed, missing or stale. Server-side SLI may miss requests.
+        dashboard_url: http://localhost:3000/d/golden-signals?var-service=order-api
+        runbook_url: http://localhost:8085/runbooks/telemetry.md

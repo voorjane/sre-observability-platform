@@ -119,6 +119,37 @@ services:
     networks:
       - sre-net
 
+  alert-webhook:
+    build:
+      context: ./services/alert-webhook
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8080"
+    volumes:
+      - alert-webhook-data:/data
+      - ./docs/runbooks:/runbooks:ro
+    networks:
+      - sre-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.35.0
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --data.retention=120h
+      - --cluster.listen-address=
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    depends_on:
+      - alert-webhook
+    networks:
+      - sre-net
+
   grafana:
     image: grafana/grafana:13.3.1
     restart: unless-stopped
@@ -158,6 +189,8 @@ volumes:
   loki-data:
   alloy-data:
   grafana-data:
+  alertmanager-data:
+  alert-webhook-data:
 
 networks:
   sre-net:
