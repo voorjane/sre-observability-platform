@@ -1,0 +1,1217 @@
+{
+  "id": null,
+  "uid": "golden-signals",
+  "title": "Четыре золотых сигнала",
+  "description": "Прикладной трафик, ошибки, задержка, in-flight и ресурсы. Сервис/маршрут выбираются сверху; runtime относится к сервису целиком. Служебные маршруты исключены.",
+  "tags": [
+    "sre",
+    "golden-signals"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 2,
+  "refresh": "15s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 100,
+      "title": "⚡ Четыре золотых сигнала • обзор",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "title": "Трафик • RPS",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Все завершённые запросы выбранных прикладных маршрутов, включая 4xx. Известный нулевой прирост — 0; отсутствие наблюдений — No data.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "Нет данных",
+                  "color": "gray"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "valueSize": 36,
+          "titleSize": 14
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "((sum (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]))) unless on() (count(count_over_time(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]) < 2) > 0)) and on() (min(up{job=~\"${service:regex}\"}) == 1)",
+          "legendFormat": "",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Ошибки • 5xx",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "5xx / ответы без 4xx. При нулевом знаменателе доля не определена. Короткое окно rate не подтверждает 30-дневный SLO.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "Нет данных",
+                  "color": "gray"
+                }
+              }
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Request-логи order-api → трасса",
+              "url": "/d/order-slo?from=${__from}&to=${__to}&var-log_status=5..&viewPanel=30",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "valueSize": 36,
+          "titleSize": 14
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "((((sum (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code=~\"5..\"}[$__rate_interval])) or (0 * sum (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) / sum (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]))) and (sum (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on() (min(up{job=~\"${service:regex}\"}) == 1)",
+          "legendFormat": "",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Задержка • p95",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Общая histogram выбранных маршрутов без 4xx, включая 5xx. Ориентир — строго менее 250 ms.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "Нет данных",
+                  "color": "gray"
+                }
+              }
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.25
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "valueSize": 36,
+          "titleSize": 14
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(((histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) and (sum (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\",le=\"+Inf\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on() (min(up{job=~\"${service:regex}\"}) == 1)",
+          "legendFormat": "",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Запросы in-flight",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Все обрабатываемые HTTP-запросы выбранных сервисов, кроме /metrics. Фильтр маршрута к этому показателю не применяется.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "Нет данных",
+                  "color": "gray"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "valueSize": 36,
+          "titleSize": 14
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum(http_in_flight_requests{service=~\"${service:regex}\"})) and on() (min(up{job=~\"${service:regex}\"}) == 1)",
+          "legendFormat": "",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "title": "🚦 Трафик и ошибки",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "title": "Трафик по сервису и маршруту",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Все статусы. /healthz, /metrics и unmatched исключены.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "((sum by (service, handler) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]))) unless on() (count(count_over_time(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "{{service}} • {{handler}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Доля 5xx по маршрутам",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Знаменатель исключает 4xx. Пробел означает отсутствие определённой оценки, а не 0% ошибок.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "links": [
+            {
+              "title": "Request-логи order-api → трасса",
+              "url": "/d/order-slo?from=${__from}&to=${__to}&var-log_status=5..&viewPanel=30",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "((((sum by (service, handler) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code=~\"5..\"}[$__rate_interval])) or on (service, handler) (0 * sum by (service, handler) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) / sum by (service, handler) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]))) and on (service, handler) (sum by (service, handler) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "{{service}} • {{handler}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "title": "HTTP-статусы • подробности",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 8,
+          "title": "Ответы по HTTP-статусам",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Распределение трафика по фактическим статусам, включая 4xx.",
+          "pluginVersion": "13.3.1",
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 24,
+            "h": 6
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "noValue": "Нет данных",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "showPoints": "never",
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": []
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "((sum by (service, handler, status_code) (rate(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]))) unless on() (count(count_over_time(http_requests_total{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+              "legendFormat": "{{service}} • {{handler}} • {{status_code}}",
+              "refId": "A",
+              "range": true,
+              "instant": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "title": "⏱ Задержка • p50 / p95 / p99",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Задержка • p50 / p95 / p99",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Buckets агрегируются по экземплярам и статусам с сохранением le. 4xx исключены. Перцентили экземпляров не усредняются.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(((histogram_quantile(0.5, sum by (le, service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) and on (service, handler) (sum by (service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\",le=\"+Inf\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "p50 • {{service}} • {{handler}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(((histogram_quantile(0.95, sum by (le, service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) and on (service, handler) (sum by (service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\",le=\"+Inf\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "p95 • {{service}} • {{handler}}",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(((histogram_quantile(0.99, sum by (le, service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval])))) and on (service, handler) (sum by (service, handler) (rate(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\",le=\"+Inf\"}[$__rate_interval])) > 0)) unless on() (count(count_over_time(http_request_duration_seconds_bucket{service=~\"${service:regex}\",handler=~\"${route:regex}\",handler!~\"/healthz|/metrics|unmatched\",status_code!~\"4..\"}[$__rate_interval]) < 2) > 0)) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "p99 • {{service}} • {{handler}}",
+          "refId": "C",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "title": "🔋 Нагрузка и ресурсы • по сервисам целиком",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 9,
+      "title": "Активные запросы по экземплярам",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Индикатор нагрузки сервиса целиком; route не применяется. Это не процент утилизации и не размер очереди.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(http_in_flight_requests{service=~\"${service:regex}\"}) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "{{service}} • {{instance}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Go • goroutines",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Количество goroutines по экземплярам; route не применяется.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(go_goroutines{service=~\"${service:regex}\"}) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "{{service}} • {{instance}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "CPU процесса • занятые ядра",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "CPU seconds / second: значение 1 соответствует одному занятому ядру. Лимит CPU контейнера не измеряется. Route не применяется.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(rate(process_cpu_seconds_total{service=~\"${service:regex}\"}[$__rate_interval])) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "{{service}} • {{instance}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Память • RSS и Go heap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "RSS и выделенная Go heap — разные показатели, их не нужно суммировать. Значения по сервисам целиком; route не применяется.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 12,
+        "y": 33,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(process_resident_memory_bytes{service=~\"${service:regex}\"}) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "RSS • {{service}} • {{instance}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(go_memstats_heap_alloc_bytes{service=~\"${service:regex}\"}) and on (service) (label_replace(min by (job) (up{job=~\"${service:regex}\"}) == 1, \"service\", \"$1\", \"job\", \"(.*)\"))",
+          "legendFormat": "Go heap • {{service}} • {{instance}}",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Доступность scrape • выбранные сервисы",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "UP означает успешный scrape, а не выполнение SLO. DOWN — target не отвечает; No data — нет серии наблюдения.",
+      "pluginVersion": "13.3.1",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 3
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "Нет данных",
+                  "color": "gray"
+                }
+              }
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "valueSize": 36,
+          "titleSize": 14
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=~\"${service:regex}\"}",
+          "legendFormat": "{{job}} • {{instance}}",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Сервис",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(http_in_flight_requests, service)",
+        "query": {
+          "query": "label_values(http_in_flight_requests, service)",
+          "qryType": 1,
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "route",
+        "label": "Маршрут",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(http_requests_total{service=~\"${service:regex}\",handler!~\"/healthz|/metrics|unmatched\"}, handler)",
+        "query": {
+          "query": "label_values(http_requests_total{service=~\"${service:regex}\",handler!~\"/healthz|/metrics|unmatched\"}, handler)",
+          "qryType": 1,
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "SLO создания заказа и логи",
+      "type": "link",
+      "url": "/d/order-slo",
+      "keepTime": true,
+      "includeVars": false,
+      "targetBlank": false
+    }
+  ],
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "15s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  }
+}

@@ -15,3 +15,5 @@ services:
     ports: !override ["127.0.0.1::16686"]
   loki:
     ports: !override ["127.0.0.1::3100"]
+  grafana:
+    ports: !override ["127.0.0.1::3000"]
