@@ -48,11 +48,14 @@ jobs:
           docker compose config --quiet
           docker compose -f docker-compose.yml -f docker-compose.smoke.yml config --quiet
 
-      - name: Validate Prometheus configuration
+      - name: Validate Prometheus configuration and test recording rules
         run: make check-prometheus
 
       - name: Validate Loki and Alloy configuration
         run: make check-logs
+
+      - name: Validate Grafana dashboards and test SLO display semantics
+        run: make check-grafana
 
   test:
     name: Test & Lint

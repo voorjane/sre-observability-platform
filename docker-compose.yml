@@ -119,10 +119,45 @@ services:
     networks:
       - sre-net
 
+  grafana:
+    image: grafana/grafana:13.3.1
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
+      # Jaeger 2.23 exposes service/operation discovery through its v3 HTTP API.
+      GF_FEATURE_TOGGLES_ENABLE: jaegerEnableGrpcEndpoint
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    networks:
+      - sre-net
+
 volumes:
   prometheus-data:
   loki-data:
   alloy-data:
+  grafana-data:
 
 networks:
   sre-net:

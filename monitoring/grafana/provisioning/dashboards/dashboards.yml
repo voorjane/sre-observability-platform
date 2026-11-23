@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: sre-dashboards
+    orgId: 1
+    folder: SRE Observability
+    folderUid: sre-observability
+    type: file
+    disableDeletion: false
+    editable: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,151 @@
+# Month-long inputs use hourly samples to stay below promtool's fixed 10000-sample query limit.
+# Their observed arithmetic is valid, but they MUST NOT qualify as complete 15s scrape history.
+rule_files:
+- ../rules/slo.yml
+evaluation_interval: 30d
+fuzzy_compare: true
+tests:
+- name: sparse month at the 99.9 percent boundary
+  interval: 1h
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="201"}
+    values: 0+9990x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="503"}
+    values: 0+10x720
+  promql_expr_test:
+  - expr: round(order:slo_window_ready:bool{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0
+  - expr: round(order:slo_availability:ratio{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:ratio{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:observed{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0.0
+  - expr: round(order:slo_window_ready:bool{window="5m"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="30m"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="1h"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="6h"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}'
+      value: 0
+- name: sparse month with a negative remaining budget
+  interval: 1h
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="201"}
+    values: 0+9988x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="503"}
+    values: 0+12x720
+  promql_expr_test:
+  - expr: round(order:slo_window_ready:bool{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0
+  - expr: round(order:slo_availability:ratio{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:ratio{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:observed{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: -0.2
+  - expr: round(order:slo_window_ready:bool{window="5m"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="5m"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="30m"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30m"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="1h"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="1h"}'
+      value: 0
+  - expr: round(order:slo_window_ready:bool{window="6h"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="6h"}'
+      value: 0
+- name: failed scrape inside a sparse month invalidates the complete SLO
+  interval: 1h
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x359 0 1+0x359
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="201"}
+    values: 0+9990x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="503"}
+    values: 0+10x720
+  promql_expr_test:
+  - expr: round(order:slo_window_ready:bool{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0
+  - expr: order:slo_availability:ratio{window="30d"}
+    eval_time: 30d
+    exp_samples: []
+  - expr: order:slo_budget_remaining:ratio{window="30d"}
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:observed{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0.0
+- name: missing scrape inside a sparse month invalidates the complete SLO
+  interval: 1h
+  input_series:
+  - series: up{job="order-api",instance="a"}
+    values: 1+0x359 _ 1+0x359
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="201"}
+    values: 0+9990x720
+  - series: http_requests_total{service="order-api",method="POST",handler="/api/v1/orders",instance="a",status_code="503"}
+    values: 0+10x720
+  promql_expr_test:
+  - expr: round(order:slo_window_ready:bool{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0
+  - expr: order:slo_availability:ratio{window="30d"}
+    eval_time: 30d
+    exp_samples: []
+  - expr: order:slo_budget_remaining:ratio{window="30d"}
+    eval_time: 30d
+    exp_samples: []
+  - expr: round(order:slo_budget_remaining:observed{window="30d"}, 0.000000001)
+    eval_time: 30d
+    exp_samples:
+    - labels: '{service="order-api",method="POST",handler="/api/v1/orders",window="30d"}'
+      value: 0.0
