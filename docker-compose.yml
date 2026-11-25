@@ -184,6 +184,13 @@ services:
     networks:
       - sre-net
 
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: [load]
+    networks: [sre-net]
+    volumes:
+      - ./load-testing:/scenarios:ro
+
 volumes:
   prometheus-data:
   loki-data:

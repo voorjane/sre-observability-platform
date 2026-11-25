@@ -46,4 +46,10 @@ check-alerts:
 smoke:
 	python3 scripts/smoke.py --compose "$(DC)"
 
-.PHONY: build up down logs ps clean test fmt check-prometheus check-logs check-grafana check-alerts smoke
+load-test:
+	python3 load-testing/run.py --compose "$(DC)" $(ARGS)
+
+chaos:
+	python3 load-testing/chaos.py --compose "$(DC)" $(ARGS)
+
+.PHONY: build up down logs ps clean test fmt check-prometheus check-logs check-grafana check-alerts smoke load-test chaos

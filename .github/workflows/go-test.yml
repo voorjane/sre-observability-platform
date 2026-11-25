@@ -10,7 +10,7 @@ on:
       - 'services/**'
       - '.github/workflows/**'
       - 'docker-compose.yml'
-      - 'docker-compose.smoke.yml'
+      - 'load-testing/**'
       - 'docs/runbooks/**'
       - 'docs/slo.md'
       - 'scripts/**'
@@ -24,7 +24,7 @@ on:
       - 'services/**'
       - '.github/workflows/**'
       - 'docker-compose.yml'
-      - 'docker-compose.smoke.yml'
+      - 'load-testing/**'
       - 'docs/runbooks/**'
       - 'docs/slo.md'
       - 'scripts/**'
@@ -48,9 +48,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Docker Compose configuration
-        run: |
-          docker compose config --quiet
-          docker compose -f docker-compose.yml -f docker-compose.smoke.yml config --quiet
+        run: docker compose config --quiet
 
       - name: Validate Prometheus configuration and test recording rules
         run: make check-prometheus
@@ -129,7 +127,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run isolated smoke test
+      - name: Start the Compose stack
+        run: make up
+
+      - name: Run smoke test
         run: make smoke
 
       - name: Save smoke evidence and failure diagnostics
