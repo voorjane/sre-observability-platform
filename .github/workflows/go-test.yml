@@ -11,6 +11,8 @@ on:
       - '.github/workflows/**'
       - 'docker-compose.yml'
       - 'docker-compose.smoke.yml'
+      - 'docs/runbooks/**'
+      - 'docs/slo.md'
       - 'scripts/**'
       - 'monitoring/**'
       - 'Makefile'
@@ -23,6 +25,8 @@ on:
       - '.github/workflows/**'
       - 'docker-compose.yml'
       - 'docker-compose.smoke.yml'
+      - 'docs/runbooks/**'
+      - 'docs/slo.md'
       - 'scripts/**'
       - 'monitoring/**'
       - 'Makefile'
@@ -56,6 +60,9 @@ jobs:
 
       - name: Validate Grafana dashboards and test SLO display semantics
         run: make check-grafana
+
+      - name: Validate Alertmanager configuration
+        run: make check-alerts
 
   test:
     name: Test & Lint

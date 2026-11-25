@@ -21,11 +21,13 @@ clean:
 test:
 	cd services/order-api && go test -v -race ./...
 	cd services/payment-worker && go test -v -race ./...
+	cd services/alert-webhook && go test -v -race ./...
 
 fmt:
 	gofmt -w services/
 	cd services/order-api && go vet ./...
 	cd services/payment-worker && go vet ./...
+	cd services/alert-webhook && go vet ./...
 
 check-prometheus:
 	$(DC) run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yml
@@ -38,7 +40,10 @@ check-logs:
 check-grafana:
 	python3 scripts/check-grafana.py --compose "$(DC)"
 
+check-alerts:
+	$(DC) run --rm --no-deps --entrypoint amtool alertmanager check-config /etc/alertmanager/alertmanager.yml
+
 smoke:
 	python3 scripts/smoke.py --compose "$(DC)"
 
-.PHONY: build up down logs ps clean test fmt check-prometheus check-logs check-grafana smoke
+.PHONY: build up down logs ps clean test fmt check-prometheus check-logs check-grafana check-alerts smoke

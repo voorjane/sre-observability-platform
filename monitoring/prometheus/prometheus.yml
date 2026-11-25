@@ -2,9 +2,18 @@ global:
   scrape_interval: 15s
   scrape_timeout: 5s
   evaluation_interval: 15s
+  external_labels:
+    dashboard_base_url: http://localhost:3000
+    runbook_base_url: http://localhost:8085/runbooks
 
 rule_files:
   - /etc/prometheus/rules/slo.yml
+  - /etc/prometheus/rules/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
 
 scrape_configs:
   - job_name: order-api
